@@ -118,6 +118,18 @@ VOID Fini(INT32 code, VOID* v)
     *out << "===============================================" << endl;
 }
 
+VOID InjectFunctionNameTracer(RTN rtn, VOID* v) {
+    RTN_Open(rtn);
+
+    // Insert call at entry point of routine
+    RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR) DumpFunctionName, IARG_PTR, RTN_Name(rtn), IARG_END);
+    RTN_Close(rtn);
+
+}
+
+VOID DumpFunctionName(std::string *name) {    
+}
+
 /*!
  * The main procedure of the tool.
  * This function is called when the application image is loaded but not yet started.
@@ -144,10 +156,13 @@ int main(int argc, char* argv[])
     if (KnobCount)
     {
         // Register function to be called to instrument traces
-        TRACE_AddInstrumentFunction(Trace, 0);
+        // TRACE_AddInstrumentFunction(Trace, 0);
 
         // Register function to be called for every thread before it starts running
-        PIN_AddThreadStartFunction(ThreadStart, 0);
+        //PIN_AddThreadStartFunction(ThreadStart, 0);
+
+        // Register function to be called on every function call
+        RTN_AddInstrumentFunction(InjectFunctionNameTracer, 0);
 
         // Register function to be called when the application exits
         PIN_AddFiniFunction(Fini, 0);
