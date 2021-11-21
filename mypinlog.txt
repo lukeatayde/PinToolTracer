@@ -1,0 +1,6 @@
+===============================================
+MyPinTool analysis results: 
+Number of instructions: 74810645
+Number of basic blocks: 16991394
+Number of threads: 9
+===============================================
