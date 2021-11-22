@@ -111,23 +111,22 @@ VOID ThreadStart(THREADID threadIndex, CONTEXT* ctxt, INT32 flags, VOID* v) { th
 VOID Fini(INT32 code, VOID* v)
 {
     *out << "===============================================" << endl;
-    *out << "MyPinTool analysis results: " << endl;
-    *out << "Number of instructions: " << insCount << endl;
-    *out << "Number of basic blocks: " << bblCount << endl;
-    *out << "Number of threads: " << threadCount << endl;
+    *out << "finished tracing routines" << endl;
     *out << "===============================================" << endl;
 }
 
-VOID InjectFunctionNameTracer(RTN rtn, VOID* v) {
-    RTN_Open(rtn);
-
-    // Insert call at entry point of routine
-    RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR) DumpFunctionName, IARG_PTR, RTN_Name(rtn), IARG_END);
-    RTN_Close(rtn);
-
+VOID DumpFunctionName(VOID* name) {
+    *out << "Function Trace: " << (char*) name << endl;
 }
 
-VOID DumpFunctionName(std::string *name) {    
+
+VOID InjectFunctionNameTracer(RTN rtn, VOID* v) {
+    RTN_Open(rtn);
+    //*out << "New Routine: " << RTN_Name(rtn) << endl;
+    // Insert call at entry point of routine
+    RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR) DumpFunctionName, IARG_PTR, (VOID*) &RTN_Name(rtn), IARG_END);
+    RTN_Close(rtn);
+
 }
 
 /*!
