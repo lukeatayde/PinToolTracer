@@ -156,6 +156,16 @@ VOID ImageLoadTracer(IMG img, VOID* v) {
     }
 }
 
+// TODO: Add function instrumentation for loaded libraries as well!
+// Injected logic on each image load into address space (each time executable or DLL is loaded.)
+VOID ImageUnloadTracer(IMG img, VOID* v) {
+    // When an image is unloaded from the address space, document it in the logs.
+    // Useful for debugging.
+    if (!IMG_Valid(img)) return;
+
+    *imageLoadLog << "Unloaded image: " << IMG_Name(img) << endl;
+}
+
 
 /*!
  * The main procedure of the tool.
@@ -204,6 +214,8 @@ int main(int argc, char* argv[])
         RTN_AddInstrumentFunction(InjectFunctionNameTracer, 0);
 
         IMG_AddInstrumentFunction(ImageLoadTracer, 0);
+
+        IMG_AddUnloadFunction(ImageUnloadTracer, 0);
 
         PIN_AddThreadStartFunction(ThreadStart, 0);
 
