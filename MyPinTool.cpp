@@ -34,10 +34,12 @@ std::ostream* imageLoadLog = &cerr;
 // Command line switches
 /* ===================================================================== */
 KNOB< string > KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "", "Specify file name for call tracer output.");
-KNOB< string > KnobImageLoadLog(KNOB_MODE_WRITEONCE, "pintool", "s", "", "Specify file name for symbol table tracer output");
+KNOB< string > KnobImageLoadLog(KNOB_MODE_WRITEONCE, "pintool", "s", "", "Specify file name for symbol table tracer output.");
+KNOB< BOOL > KnobLogSymbolTable(KNOB_MODE_WRITEONCE, "pintool", "sy", "0", "Specify if you want image load tracer to write out symbol table as well.");
 
 KNOB< BOOL > KnobCount(KNOB_MODE_WRITEONCE, "pintool", "count", "1",
                        "count instructions, basic blocks and threads in the application");
+
 
 std::map<THREADID, std::list<string>> threadFunctionCalls;
 std::map<ADDRINT, std::string> funcnames;
@@ -60,43 +62,10 @@ INT32 Usage()
     return -1;
 }
 
-/* ===================================================================== */
-// Analysis routines
-/* ===================================================================== */
-
-/*!
- * Increase counter of the executed basic blocks and instructions.
- * This function is called for every basic block when it is about to be executed.
- * @param[in]   numInstInBbl    number of instructions in the basic block
- * @note use atomic operations for multi-threaded applications
- */
-VOID CountBbl(UINT32 numInstInBbl)
-{
-    bblCount++;
-    insCount += numInstInBbl;
-}
 
 /* ===================================================================== */
 // Instrumentation callbacks
 /* ===================================================================== */
-
-/*!
- * Insert call to the CountBbl() analysis routine before every basic block 
- * of the trace.
- * This function is called every time a new trace is encountered.
- * @param[in]   trace    trace to be instrumented
- * @param[in]   v        value specified by the tool in the TRACE_AddInstrumentFunction
- *                       function call
- */
-VOID Trace(TRACE trace, VOID* v)
-{
-    // Visit every basic block in the trace
-    for (BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl); bbl = BBL_Next(bbl))
-    {
-        // Insert a call to CountBbl() before every basic bloc, passing the number of instructions
-        BBL_InsertCall(bbl, IPOINT_BEFORE, (AFUNPTR)CountBbl, IARG_UINT32, BBL_NumIns(bbl), IARG_END);
-    }
-}
 
 /*!
  * Increase counter of threads in the application.
@@ -105,12 +74,13 @@ VOID Trace(TRACE trace, VOID* v)
  * @param[in]   threadIndex     ID assigned by PIN to the new thread
  * @param[in]   ctxt            initial register state for the new thread
  * @param[in]   flags           thread creation flags (OS specific)
- * @param[in]   v               value specified by the tool in the 
+ * @param[in]   v               value specified by the tool in the
  *                              PIN_AddThreadStartFunction function call
  */
-VOID ThreadStart(THREADID threadIndex, CONTEXT* ctxt, INT32 flags, VOID* v) { 
+VOID ThreadStart(THREADID threadIndex, CONTEXT* ctxt, INT32 flags, VOID* v) {
     *out << "=========== New Thread: " << threadIndex << "==========" << endl;
 }
+
 
 VOID ThreadFini(THREADID threadid, const CONTEXT* ctxt, INT32 code, VOID* v)
 {
@@ -169,14 +139,19 @@ VOID ImageLoadTracer(IMG img, VOID* v) {
 
     *imageLoadLog << "Loaded image: " << IMG_Name(img) << endl;
 
-    // Iterate over sections
-    for (SEC sec = IMG_SecHead(img); SEC_Valid(sec); sec = SEC_Next(sec)) {
-        // Iterate over routines
-        for (RTN rtn = SEC_RtnHead(sec); RTN_Valid(rtn); rtn = RTN_Next(rtn)) {
-            ADDRINT routine_addr = RTN_Address(rtn);
-            std::string routine_name = RTN_Name(rtn);        
-            funcnames[routine_addr] = routine_name;
-            *imageLoadLog << "\t" << routine_addr << ": " << routine_name << endl;
+    // If we opted to record the symbol table as well, we write it out to disk as well.
+
+
+    if (KnobLogSymbolTable) {
+        // Iterate over sections
+        for (SEC sec = IMG_SecHead(img); SEC_Valid(sec); sec = SEC_Next(sec)) {
+            // Iterate over routines
+            for (RTN rtn = SEC_RtnHead(sec); RTN_Valid(rtn); rtn = RTN_Next(rtn)) {
+                ADDRINT routine_addr = RTN_Address(rtn);
+                std::string routine_name = RTN_Name(rtn);
+                funcnames[routine_addr] = routine_name;
+                *imageLoadLog << "\t" << routine_addr << ": " << routine_name << endl;
+            }
         }
     }
 }
