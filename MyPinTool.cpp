@@ -28,11 +28,13 @@ UINT64 bblCount    = 0; //number of dynamically executed basic blocks
 UINT64 threadCount = 0; //total number of threads, including main thread
 
 std::ostream* out = &cerr;
+std::ostream* imageLoadLog = &cerr;
 
 /* ===================================================================== */
 // Command line switches
 /* ===================================================================== */
-KNOB< string > KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "", "specify file name for MyPinTool output");
+KNOB< string > KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "", "Specify file name for call tracer output.");
+KNOB< string > KnobImageLoadLog(KNOB_MODE_WRITEONCE, "pintool", "s", "", "Specify file name for symbol table tracer output");
 
 KNOB< BOOL > KnobCount(KNOB_MODE_WRITEONCE, "pintool", "count", "1",
                        "count instructions, basic blocks and threads in the application");
@@ -158,19 +160,27 @@ VOID InjectFunctionNameTracer(RTN rtn, VOID* v) {
 
 }
 
-VOID CollectFunctionNames(IMG img, void* v) {
-    // When an image is loaded into the address space, document all of its function symbols
+// TODO: Add function instrumentation for loaded libraries as well!
+// Injected logic on each image load into address space (each time executable or DLL is loaded.)
+VOID ImageLoadTracer(IMG img, VOID* v) {
+    // When an image is loaded into the address space, document all of its function symbols to the log.
+    // Useful for debugging.
     if (!IMG_Valid(img)) return;
+
+    *imageLoadLog << "Loaded image: " << IMG_Name(img) << endl;
 
     // Iterate over sections
     for (SEC sec = IMG_SecHead(img); SEC_Valid(sec); sec = SEC_Next(sec)) {
         // Iterate over routines
         for (RTN rtn = SEC_RtnHead(sec); RTN_Valid(rtn); rtn = RTN_Next(rtn)) {
-            //funcnames[RTN_Address(rtn)] = RTN_Name(rtn);
-            continue;
+            ADDRINT routine_addr = RTN_Address(rtn);
+            std::string routine_name = RTN_Name(rtn);        
+            funcnames[routine_addr] = routine_name;
+            *imageLoadLog << "\t" << routine_addr << ": " << routine_name << endl;
         }
     }
 }
+
 
 /*!
  * The main procedure of the tool.
@@ -200,6 +210,13 @@ int main(int argc, char* argv[])
         out = new std::ofstream(fileName.c_str());
     }
 
+    string imageLoadLogFile = KnobImageLoadLog.Value();
+
+    if (!imageLoadLogFile.empty())
+    {
+        imageLoadLog = new std::ofstream(imageLoadLogFile.c_str());
+    }
+
     if (KnobCount)
     {
         // Register function to be called to instrument traces
@@ -210,6 +227,8 @@ int main(int argc, char* argv[])
 
         // Register function to be called on every function call
         RTN_AddInstrumentFunction(InjectFunctionNameTracer, 0);
+
+        IMG_AddInstrumentFunction(ImageLoadTracer, 0);
 
         PIN_AddThreadStartFunction(ThreadStart, 0);
 
