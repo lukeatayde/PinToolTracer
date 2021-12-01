@@ -1,11 +1,14 @@
 import typing
 import re
 import codecs
-
+from collections import defaultdict
+from pprint import PrettyPrinter
 """
 Script that parses and models call graph of program tracked by pintool.
 """
 # ENCODINGS = ["utf8", "cp1252"]
+
+pp = PrettyPrinter(indent=4)
 
 def parse_trace(filename: str):
 	file = codecs.open(filename, "r", encoding="cp1252", errors="replace")
@@ -26,6 +29,10 @@ def parse_trace(filename: str):
 		print(f"Found head for thread { thread }")
 
 		func_names = set()
+		# tracks edges in call grpah
+		call_graph = defaultdict(set)
+
+		last_func = "TRACE_START"
 
 		line = file.readline()
 		while line:
@@ -39,9 +46,14 @@ def parse_trace(filename: str):
 			if name not in func_names:
 				func_names.add(name)
 
+			call_graph[last_func].add(name)
+			last_func = name
+
 			line = file.readline()
 
 		# Hit the bottom of a thread's trace. Repeat the process until the file is exhausted.
-		print(func_names)
+		pp.pprint(func_names)
+		pp.pprint(call_graph)
+		
 
 parse_trace("calltrace_log.txt")
