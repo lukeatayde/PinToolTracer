@@ -12,6 +12,7 @@
 #include <iostream>
 #include <fstream>
 using std::cerr;
+using std::cout;
 using std::endl;
 using std::string;
 
@@ -116,7 +117,7 @@ VOID Fini(INT32 code, VOID* v)
 }
 
 VOID DumpFunctionName(VOID* name) {
-    *out << "Function Trace: " << (char*) name << endl;
+    *out << "Function Trace: " << PIN_UndecorateSymbolName((char*) name, UNDECORATION_NAME_ONLY)  << endl;
 }
 
 
@@ -140,6 +141,10 @@ int main(int argc, char* argv[])
 {
     // Initialize PIN library. Print help message if -h(elp) is specified
     // in the command line or the command line is invalid
+    PIN_InitSymbols();
+
+    
+
     if (PIN_Init(argc, argv))
     {
         return Usage();

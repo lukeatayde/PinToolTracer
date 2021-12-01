@@ -2,7 +2,7 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>C:\Users\lucas\source\repos\pin-3.21-98484-ge7cd811fd-msvc-windows\pin-3.21-98484-ge7cd811fd-msvc-windows\source\tools\MyPinTool\x64\Debug\MyPinTool.dll</FullPath>
+      <FullPath>C:\Users\lucas\source\repos\pin-3.21-98484-ge7cd811fd-msvc-windows\pin-3.21-98484-ge7cd811fd-msvc-windows\source\tools\PinToolTracer\x64\Debug\MyPinTool.dll</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles />
