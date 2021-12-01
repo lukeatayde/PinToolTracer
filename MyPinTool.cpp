@@ -11,6 +11,9 @@
 #include "pin.H"
 #include <iostream>
 #include <fstream>
+#include <map>
+#include <list>
+
 using std::cerr;
 using std::cout;
 using std::endl;
@@ -33,6 +36,8 @@ KNOB< string > KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "", "specify 
 
 KNOB< BOOL > KnobCount(KNOB_MODE_WRITEONCE, "pintool", "count", "1",
                        "count instructions, basic blocks and threads in the application");
+
+std::map<THREADID, std::list<string>> threadFunctionCalls;
 
 /* ===================================================================== */
 // Utilities
@@ -100,7 +105,18 @@ VOID Trace(TRACE trace, VOID* v)
  * @param[in]   v               value specified by the tool in the 
  *                              PIN_AddThreadStartFunction function call
  */
-VOID ThreadStart(THREADID threadIndex, CONTEXT* ctxt, INT32 flags, VOID* v) { threadCount++; }
+VOID ThreadStart(THREADID threadIndex, CONTEXT* ctxt, INT32 flags, VOID* v) { 
+    *out << "=========== New Thread: " << threadIndex << "==========" << endl;
+}
+
+VOID ThreadFini(THREADID threadid, const CONTEXT* ctxt, INT32 code, VOID* v)
+{
+    *out << "=====================================" << endl;
+    *out << "Thread Function Trace: " << threadid << endl;
+    for (string functionName: threadFunctionCalls[threadid])
+        *out << "\t" << functionName << endl;
+    *out << "=====================================" << endl;
+}
 
 /*!
  * Print out analysis results.
@@ -117,7 +133,8 @@ VOID Fini(INT32 code, VOID* v)
 }
 
 VOID DumpFunctionName(VOID* name) {
-    *out << "Function Trace: " << PIN_UndecorateSymbolName((char*) name, UNDECORATION_NAME_ONLY)  << endl;
+    threadFunctionCalls[PIN_ThreadId()].push_back(PIN_UndecorateSymbolName((char*)name, UNDECORATION_NAME_ONLY));
+    //*out << "Function Trace: " << PIN_UndecorateSymbolName((char*) name, UNDECORATION_NAME_ONLY)  << endl;
 }
 
 
@@ -167,6 +184,10 @@ int main(int argc, char* argv[])
 
         // Register function to be called on every function call
         RTN_AddInstrumentFunction(InjectFunctionNameTracer, 0);
+
+        PIN_AddThreadStartFunction(ThreadStart, 0);
+
+        PIN_AddThreadFiniFunction(ThreadFini, 0);
 
         // Register function to be called when the application exits
         PIN_AddFiniFunction(Fini, 0);
