@@ -117,7 +117,8 @@ VOID Fini(INT32 code, VOID* v)
 }
 
 VOID DumpFunctionName(VOID* name) {
-    *out << "Function Trace: " << PIN_UndecorateSymbolName((char*) name, UNDECORATION_NAME_ONLY)  << endl;
+    *out << "Function Trace: " << (char*) name << endl;
+    *out << "Function Trace Undecorated: " << PIN_UndecorateSymbolName((char*)name, UNDECORATION_NAME_ONLY) << endl;
 }
 
 
@@ -128,6 +129,20 @@ VOID InjectFunctionNameTracer(RTN rtn, VOID* v) {
     RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR) DumpFunctionName, IARG_PTR, (VOID*) &RTN_Name(rtn), IARG_END);
     RTN_Close(rtn);
 
+}
+
+VOID CollectFunctionNames(IMG img, void* v) {
+    // When an image is loaded into the address space, document all of its function symbols
+    if (!IMG_Valid(img)) return;
+
+    // Iterate over sections
+    for (SEC sec = IMG_SecHead(img); SEC_Valid(sec); sec = SEC_Next(sec)) {
+        // Iterate over routines
+        for (RTN rtn = SEC_RtnHead(sec); RTN_Valid(rtn); rtn = RTN_Next(rtn)) {
+            //funcnames[RTN_Address(rtn)] = RTN_Name(rtn);
+            continue;
+        }
+    }
 }
 
 /*!
@@ -141,7 +156,8 @@ int main(int argc, char* argv[])
 {
     // Initialize PIN library. Print help message if -h(elp) is specified
     // in the command line or the command line is invalid
-    PIN_InitSymbols();
+    // PIN_InitSymbols();
+    PIN_InitSymbolsAlt(DEBUG_OR_EXPORT_SYMBOLS);
 
     
 
