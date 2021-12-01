@@ -13,6 +13,7 @@ pp = PrettyPrinter(indent=4)
 def parse_trace(filename: str):
 	file = codecs.open(filename, "r", encoding="cp1252", errors="replace")
 	func_name_re = re.compile("\t(?P<FunctionName>.*)$")
+	return_re = re.compile("\t(?P<return>ret).*$")
 	
 	line = file.readline()
 	while True:  
@@ -31,23 +32,29 @@ def parse_trace(filename: str):
 		func_names = set()
 		# tracks edges in call grpah
 		call_graph = defaultdict(set)
+		return_graph = defaultdict(set)
+		
 
-		last_func = "TRACE_START"
+		call_stack = ["CALL_STACK_START"]
 
 		line = file.readline()
 		while line:
-			match = func_name_re.search(line)
-		
-			# Hit a line that isn't a function call.
-			if not match:
+			func_match = func_name_re.search(line)
+			ret_match = return_re.search(line)
+			if func_match:
+				name = func_match.group("FunctionName")
+				if name not in func_names:
+					func_names.add(name)
+
+				call_graph[call_stack[-1]].add(name)
+				call_stack.append(name)
+			elif ret_match:
+				# If it is a return, we need to pop the function name off the stack, and create an edge
+				return_from = call_stack.pop()
+				return_graph[return_from].add(call_stack[-1])
+			else:
+				# We got no match. Line is neither a function or a return
 				break
-
-			name = match.group("FunctionName")
-			if name not in func_names:
-				func_names.add(name)
-
-			call_graph[last_func].add(name)
-			last_func = name
 
 			line = file.readline()
 
