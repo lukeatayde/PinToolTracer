@@ -133,6 +133,16 @@ VOID Fini(INT32 code, VOID* v)
 }
 
 VOID DumpFunctionName(VOID* name) {
+    /*
+    if (threadFunctionCalls.count(PIN_ThreadId()) > 0) {
+        threadFunctionCalls[PIN_ThreadId()].push_back(PIN_UndecorateSymbolName((char*)name, UNDECORATION_NAME_ONLY));
+    }
+    else {
+       *out << "===============================================" << endl;
+       *out << "ERROR UNABLE TO FIND TRACE FOR THREAD:" << PIN_ThreadId() << endl;
+       *out << "===============================================" << endl;
+    }
+    */
     threadFunctionCalls[PIN_ThreadId()].push_back(PIN_UndecorateSymbolName((char*)name, UNDECORATION_NAME_ONLY));
     //*out << "Function Trace: " << PIN_UndecorateSymbolName((char*) name, UNDECORATION_NAME_ONLY)  << endl;
 }
