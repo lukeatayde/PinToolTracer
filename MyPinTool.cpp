@@ -38,6 +38,7 @@ KNOB< BOOL > KnobCount(KNOB_MODE_WRITEONCE, "pintool", "count", "1",
                        "count instructions, basic blocks and threads in the application");
 
 std::map<THREADID, std::list<string>> threadFunctionCalls;
+std::map<ADDRINT, std::string> funcnames;
 
 /* ===================================================================== */
 // Utilities
