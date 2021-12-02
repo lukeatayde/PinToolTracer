@@ -3,6 +3,7 @@ import re
 import codecs
 from collections import defaultdict
 from pprint import PrettyPrinter
+import graphviz
 """
 Script that parses and models call graph of program tracked by pintool.
 """
@@ -33,8 +34,9 @@ def parse_trace(filename: str):
 		# tracks edges in call grpah
 		call_graph = defaultdict(set)
 		return_graph = defaultdict(set)
+		graph_viz = graphviz.Digraph(comment="Call Graph")
 		
-
+		graph_viz.node("CALL_STACK_START")
 		call_stack = ["CALL_STACK_START"]
 
 		line = file.readline()
@@ -42,11 +44,18 @@ def parse_trace(filename: str):
 			func_match = func_name_re.search(line)
 			ret_match = return_re.search(line)
 			if func_match:
-				name = func_match.group("FunctionName")
+				name = re.escape(func_match.group("FunctionName"))
 				if name not in func_names:
 					func_names.add(name)
+					graph_viz.node(name)
 
-				call_graph[call_stack[-1]].add(name)
+				last_func = call_stack[-1]
+				if (name not in call_graph[last_func]):
+					call_graph[last_func].add(name)
+					graph_viz.edge(last_func, name)
+					# Add an edge to the graph showing it calls it.
+					
+
 				call_stack.append(name)
 			elif ret_match:
 				# If it is a return, we need to pop the function name off the stack, and create an edge
@@ -61,6 +70,7 @@ def parse_trace(filename: str):
 		# Hit the bottom of a thread's trace. Repeat the process until the file is exhausted.
 		pp.pprint(func_names)
 		pp.pprint(call_graph)
+		graph_viz.render(filename=f"thread_{thread}_call_graph", view=True, cleanup=True)
 		
 
 parse_trace("calltrace_log.txt")
