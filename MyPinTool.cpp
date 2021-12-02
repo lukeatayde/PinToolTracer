@@ -44,31 +44,6 @@ KNOB< BOOL > KnobCount(KNOB_MODE_WRITEONCE, "pintool", "count", "1",
 std::map<THREADID, std::list<string>> threadFunctionCalls;
 std::map<ADDRINT, std::string> funcnames;
 
-struct traceNode {
-    string name;
-    traceNode* parentTrace;
-    struct std::list<traceNode*> subTraces;
-};
-
-struct traceNode* newNode(string traceName) {
-    // declare and allocate new node  
-    struct traceNode* node = new struct traceNode();
-
-    node->name = traceName;
-    node->parentTrace = node;
-    return(node);
-}
-
-traceNode* addSubTrace(traceNode* parent, string traceName) {
-    traceNode* subNode = newNode(traceName);
-    parent->subTraces.push_back(subNode);
-    subNode->parentTrace = parent;
-    return subNode;
-}
-
-
-std::map<THREADID, traceNode*> globalThreadTraces;
-std::map<THREADID, traceNode*> currThreadTraces;
 
 /* ===================================================================== */
 // Utilities
@@ -93,21 +68,10 @@ INT32 Usage()
 // Instrumentation callbacks
 /* ===================================================================== */
 
-/*!
- * Increase counter of threads in the application.
- * This function is called for every thread created by the application when it is
- * about to start running (including the root thread).
- * @param[in]   threadIndex     ID assigned by PIN to the new thread
- * @param[in]   ctxt            initial register state for the new thread
- * @param[in]   flags           thread creation flags (OS specific)
- * @param[in]   v               value specified by the tool in the
- *                              PIN_AddThreadStartFunction function call
- */
+
 VOID ThreadStart(THREADID threadIndex, CONTEXT* ctxt, INT32 flags, VOID* v) {
-    *out << "=========== New Thread: " << threadIndex << "==========" << endl;
-    //blankTrace.parentNode = NULL;
-    globalThreadTraces[threadIndex] = newNode("Thread" + threadIndex);
-    currThreadTraces[threadIndex] = globalThreadTraces[threadIndex];
+    std::list<string> functionTrace;
+    threadFunctionCalls[PIN_ThreadId()] = functionTrace;
 }
 
 
@@ -120,13 +84,7 @@ VOID ThreadFini(THREADID threadid, const CONTEXT* ctxt, INT32 code, VOID* v)
     *out << "=====================================" << endl;
 }
 
-/*!
- * Print out analysis results.
- * This function is called when the application exits.
- * @param[in]   code            exit code of the application
- * @param[in]   v               value specified by the tool in the 
- *                              PIN_AddFiniFunction function call
- */
+
 VOID Fini(INT32 code, VOID* v)
 {
     *out << "===============================================" << endl;
@@ -135,48 +93,12 @@ VOID Fini(INT32 code, VOID* v)
 }
 
 VOID AddNewLayerTrace(VOID* name) {
-    /*
-    if (threadFunctionCalls.count(PIN_ThreadId()) > 0) {
-        threadFunctionCalls[PIN_ThreadId()].push_back(PIN_UndecorateSymbolName((char*)name, UNDECORATION_NAME_ONLY));
-    }
-    else {
-       *out << "===============================================" << endl;
-       *out << "ERROR UNABLE TO FIND TRACE FOR THREAD:" << PIN_ThreadId() << endl;
-       *out << "===============================================" << endl;
-    }
-    */
-    
-    threadFunctionCalls[PIN_ThreadId()].push_back(PIN_UndecorateSymbolName((char*)name, UNDECORATION_NAME_ONLY));
-    
-    THREADID curr_thread = PIN_ThreadId();
-    string func_name = PIN_UndecorateSymbolName((char*)name, UNDECORATION_NAME_ONLY);
-    traceNode* curr_trace = currThreadTraces[PIN_ThreadId()];
-
-    // Add new sub tree to current trace 
-    traceNode*  subTrace = addSubTrace(curr_trace, func_name);
-
-    // Update current trace to be the new subtree
-    currThreadTraces[PIN_ThreadId()] = subTrace;
-    
-     
-    //*out << "Function Trace: " << PIN_UndecorateSymbolName((char*) name, UNDECORATION_NAME_ONLY)  << endl;
+    threadFunctionCalls[PIN_ThreadId()].push_back(PIN_UndecorateSymbolName((char*)name, UNDECORATION_NAME_ONLY));     
 }
-
-void TerminateLayer() {
-    // update current trace to previous trace
-    
-    traceNode* previous_trace = currThreadTraces[PIN_ThreadId()]->parentTrace;
-    currThreadTraces[PIN_ThreadId()] = previous_trace;
-    
-}
-
 
 VOID InjectFunctionNameTracer(RTN rtn, VOID* v) {
     RTN_Open(rtn);
-    //*out << "New Routine: " << RTN_Name(rtn) << endl;
-    // Insert call at entry point of routine
     RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)AddNewLayerTrace, IARG_PTR, (VOID*) &RTN_Name(rtn), IARG_END);
-    RTN_InsertCall(rtn, IPOINT_AFTER, (AFUNPTR)TerminateLayer, IARG_END);
     RTN_Close(rtn);
 
 }
