@@ -44,6 +44,32 @@ KNOB< BOOL > KnobCount(KNOB_MODE_WRITEONCE, "pintool", "count", "1",
 std::map<THREADID, std::list<string>> threadFunctionCalls;
 std::map<ADDRINT, std::string> funcnames;
 
+struct traceNode {
+    string name;
+    traceNode* parentTrace;
+    struct std::list<traceNode*> subTraces;
+};
+
+struct traceNode* newNode(string traceName) {
+    // declare and allocate new node  
+    struct traceNode* node = new struct traceNode();
+
+    node->name = traceName;
+    node->parentTrace = node;
+    return(node);
+}
+
+traceNode* addSubTrace(traceNode* parent, string traceName) {
+    traceNode* subNode = newNode(traceName);
+    parent->subTraces.push_back(subNode);
+    subNode->parentTrace = parent;
+    return subNode;
+}
+
+
+std::map<THREADID, traceNode*> globalThreadTraces;
+std::map<THREADID, traceNode*> currThreadTraces;
+
 /* ===================================================================== */
 // Utilities
 /* ===================================================================== */
@@ -79,6 +105,9 @@ INT32 Usage()
  */
 VOID ThreadStart(THREADID threadIndex, CONTEXT* ctxt, INT32 flags, VOID* v) {
     *out << "=========== New Thread: " << threadIndex << "==========" << endl;
+    //blankTrace.parentNode = NULL;
+    globalThreadTraces[threadIndex] = newNode("Thread" + threadIndex);
+    currThreadTraces[threadIndex] = globalThreadTraces[threadIndex];
 }
 
 
@@ -105,7 +134,7 @@ VOID Fini(INT32 code, VOID* v)
     *out << "===============================================" << endl;
 }
 
-VOID DumpFunctionName(VOID* name) {
+VOID AddNewLayerTrace(VOID* name) {
     /*
     if (threadFunctionCalls.count(PIN_ThreadId()) > 0) {
         threadFunctionCalls[PIN_ThreadId()].push_back(PIN_UndecorateSymbolName((char*)name, UNDECORATION_NAME_ONLY));
@@ -116,8 +145,29 @@ VOID DumpFunctionName(VOID* name) {
        *out << "===============================================" << endl;
     }
     */
+    
     threadFunctionCalls[PIN_ThreadId()].push_back(PIN_UndecorateSymbolName((char*)name, UNDECORATION_NAME_ONLY));
+    
+    THREADID curr_thread = PIN_ThreadId();
+    string func_name = PIN_UndecorateSymbolName((char*)name, UNDECORATION_NAME_ONLY);
+    traceNode* curr_trace = currThreadTraces[PIN_ThreadId()];
+
+    // Add new sub tree to current trace 
+    traceNode*  subTrace = addSubTrace(curr_trace, func_name);
+
+    // Update current trace to be the new subtree
+    currThreadTraces[PIN_ThreadId()] = subTrace;
+    
+     
     //*out << "Function Trace: " << PIN_UndecorateSymbolName((char*) name, UNDECORATION_NAME_ONLY)  << endl;
+}
+
+void TerminateLayer() {
+    // update current trace to previous trace
+    
+    traceNode* previous_trace = currThreadTraces[PIN_ThreadId()]->parentTrace;
+    currThreadTraces[PIN_ThreadId()] = previous_trace;
+    
 }
 
 
@@ -125,7 +175,8 @@ VOID InjectFunctionNameTracer(RTN rtn, VOID* v) {
     RTN_Open(rtn);
     //*out << "New Routine: " << RTN_Name(rtn) << endl;
     // Insert call at entry point of routine
-    RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR) DumpFunctionName, IARG_PTR, (VOID*) &RTN_Name(rtn), IARG_END);
+    RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)AddNewLayerTrace, IARG_PTR, (VOID*) &RTN_Name(rtn), IARG_END);
+    RTN_InsertCall(rtn, IPOINT_AFTER, (AFUNPTR)TerminateLayer, IARG_END);
     RTN_Close(rtn);
 
 }
