@@ -110,7 +110,7 @@ VOID ImageLoadTracer(IMG img, VOID* v) {
     // Useful for debugging.
     if (!IMG_Valid(img)) return;
 
-    *imageLoadLog << "Loaded image: " << IMG_Name(img) << endl;
+    //*imageLoadLog << "Loaded image: " << IMG_Name(img) << endl;
 
     // If we opted to record the symbol table as well, we write it out to disk as well.
 
@@ -198,13 +198,13 @@ int main(int argc, char* argv[])
         PIN_AddFiniFunction(Fini, 0);
     }
 
-    cerr << "===============================================" << endl;
-    cerr << "This application is instrumented by MyPinTool" << endl;
-    if (!KnobOutputFile.Value().empty())
-    {
-        cerr << "See file " << KnobOutputFile.Value() << " for analysis results" << endl;
-    }
-    cerr << "===============================================" << endl;
+    //cerr << "===============================================" << endl;
+    //cerr << "This application is instrumented by MyPinTool" << endl;
+    //if (!KnobOutputFile.Value().empty())
+    //{
+    //    cerr << "See file " << KnobOutputFile.Value() << " for analysis results" << endl;
+    //}
+    //cerr << "===============================================" << endl;
 
     // Start the program, never returns
     PIN_StartProgram();
