@@ -25,10 +25,10 @@ using std::string;
 
 UINT64 insCount    = 0; //number of dynamically executed instructions
 UINT64 bblCount    = 0; //number of dynamically executed basic blocks
-UINT64 threadCount = 0; //total number of threads, including main thread
+UINT64 rountineCount = 0; //total number of routine invocations, including main thread
 
-std::ostream* out = &cerr;
-std::ostream* imageLoadLog = &cerr;
+std::ostream* out = &cout;
+std::ostream* imageLoadLog = &cout;
 
 /* ===================================================================== */
 // Command line switches
@@ -88,11 +88,12 @@ VOID ThreadFini(THREADID threadid, const CONTEXT* ctxt, INT32 code, VOID* v)
 VOID Fini(INT32 code, VOID* v)
 {
     *out << "===============================================" << endl;
-    *out << "finished tracing routines" << endl;
+    *out << "finished tracing "<< rountineCount << " routines" << endl;
     *out << "===============================================" << endl;
 }
 
 VOID AddNewLayerTrace(VOID* name) {
+    rountineCount++;
     threadFunctionCalls[PIN_ThreadId()].push_back(PIN_UndecorateSymbolName((char*)name, UNDECORATION_NAME_ONLY));     
 }
 
